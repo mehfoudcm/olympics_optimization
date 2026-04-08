@@ -79,6 +79,7 @@ def flatten_prices(df):
     df_filtered = df_filtered[df_filtered.Zone != 'San José']
 
     df_filtered = df_filtered[df_filtered['Start Time'] != 'TBD']
+
     
     # Treat 'Not Ticketed' (-) as 0 price
     df_filtered['Price_Num'] = df_filtered['Price'].astype(str)
@@ -92,6 +93,7 @@ def flatten_prices(df):
     # Convert to float; invalid values become NaN, then fill NaN with 0
     df_filtered['Price_Num'] = pd.to_numeric(df_filtered['Price_Num'], errors='coerce').fillna(0.0)
     df_filtered['Games Day'] = pd.to_numeric(df_filtered['Games Day'], errors='coerce').fillna(0).astype(int)
+    df_filtered = df_filtered[df_filtered['Games Day'] >= 11]
     
     return df_filtered
 
