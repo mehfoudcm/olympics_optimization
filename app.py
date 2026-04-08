@@ -35,6 +35,37 @@ df_sessions = pd.DataFrame(sessions_data)
 st.dataframe(df_sessions)
 
 
+# Assuming 'df' is the dataframe you fetched from Supabase
+def flatten_prices(df):
+    # Columns that stay as they are
+    id_vars = [
+        'Sport', 'Venue', 'Zone', 'Session Code', 'Date', 
+        'Games Day', 'Session Type', 'Session Description', 
+        'Start Time', 'End Time'
+    ]
+    
+    # The price columns you want to turn into rows
+    value_vars = ['Category A', 'Category B', 'Category C', 'Category D', 
+                  'Category E', 'Category F', 'Category G', 'Category H', 
+                  'Category I', 'Category J']
+
+    # Unpivot the table
+    df_long = pd.melt(
+        df, 
+        id_vars=id_vars, 
+        value_vars=value_vars,
+        var_name='Price Category', 
+        value_name='Price'
+    )
+    
+    # Clean up: Remove rows where Price might be null (if a category isn't offered)
+    df_long = df_long.dropna(subset=['Price'])
+    
+    return df_long
+
+df_new = flatten_prices(pd.DataFrame(raw_data))
+st.dataframe(df_new)
+
 # 3. Optimization Setup
 prob = LpProblem("Olympic_Planning", LpMaximize)
 
