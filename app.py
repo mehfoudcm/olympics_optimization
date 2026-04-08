@@ -149,7 +149,7 @@ tickets = st.sidebar.slider("Max Tickets", 1, 24, 12)
 
 if st.button("Generate Optimized Schedule"):
     # Assuming 'clean_df' is the result of your previous transformation
-    itinerary = optimize_itinerary(clean_df, max_tickets=tickets, total_budget=budget)
+    itinerary = optimize_itinerary(df_new, max_tickets=tickets, total_budget=budget)
     
     st.write(f"### Found {len(itinerary)} events within your constraints:")
     st.dataframe(itinerary[['Sport', 'Session Description', 'Date', 'Start Time', 'Price Category', 'Price']])
