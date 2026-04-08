@@ -109,6 +109,28 @@ if not selected_zones:
     st.warning("Please select at least one Zone in the sidebar.")
     st.stop()
 
+
+
+st.sidebar.header("Mandatory Events")
+
+# Create a helper column for a readable label in the dropdown
+df_new_zone['label'] = (
+    df_new_zone['id'] + ":" + df_new_zone['Session Description'] + 
+    " (" + df_new_zone['Price Category'] + ": $" + 
+    df_new_zone['Price'].astype(str) + ")"
+)
+
+# Multiselect for mandatory events
+must_attend_labels = st.sidebar.multiselect(
+    "Select events you MUST attend:",
+    options=df_new_zone['label'].unique()
+)
+
+# Map those labels back to the unique 'id'
+must_attend_ids = df_new_zone[df_new_zone['label'].isin(must_attend_labels)]['id'].tolist()
+
+
+
 def optimize_itinerary(df, max_tickets=24, total_budget=2000):
     # --- 1. Data Cleaning for Optimizer ---
     # Treat 'Not Ticketed' (-) as 0 price
@@ -145,11 +167,17 @@ def optimize_itinerary(df, max_tickets=24, total_budget=2000):
 
     # --- 3. Constraints ---
 
+    # MUST ATTEND EVENTS
+    for i in df.index:
+        if df.loc[i, 'id'] in must_attend_ids:
+            # This forces the optimizer to pick this specific row
+            prob += choices[i] == 1
+    
     # Constraint A: Total Ticket Limit
     prob += lpSum([choices[i] for i in df.index]) <= max_tickets
 
     # Constraint B: Total Budget
-    prob += lpSum([choices[i] * df.loc[i, 'Price_Numeric'] for i in df.index]) <= total_budget
+    prob += lpSum([choices[i] * df.loc[i, 'Price'] for i in df.index]) <= total_budget
 
     # Constraint C: Only ONE category per Session Code
     # (Stops you from buying Category A AND B for the same race)
@@ -188,15 +216,16 @@ def optimize_itinerary(df, max_tickets=24, total_budget=2000):
 st.title("🏅 Olympic Itinerary Optimizer")
 
 # User Controls
-budget = st.sidebar.slider("Max Budget (€)", 100, 5000, 1500)
+budget = st.sidebar.slider("Max Budget ($)", 100, 5000, 1500)
 tickets = st.sidebar.slider("Max Tickets", 1, 24, 12)
+
 
 if st.button("Generate Optimized Schedule"):
     # Assuming 'clean_df' is the result of your previous transformation
     itinerary = optimize_itinerary(df_new_zone, max_tickets=tickets, total_budget=budget)
     
     st.write(f"### Found {len(itinerary)} events within your constraints:")
-    st.dataframe(itinerary[['Sport', 'Session Description', 'Date', 'Start Time', 'Price Category', 'Price']])
+    st.dataframe(itinerary[['id', 'Sport', 'Session Description', 'Date', 'Session Day', 'Start Time', 'End Time', 'Price Category', 'Price']])
     
     total_cost = itinerary['Price_Numeric'].sum()
     st.metric("Total Estimated Cost", f"€{total_cost:,.2f}")
