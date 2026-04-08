@@ -4,7 +4,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 # from st_supabase_connection import SupabaseConnection
 from supabase import create_client, Client
-from pulp import LpProblem, LpBinary, LpVariable, lpSum, LpMaximize, value
+from pulp import LpProblem, LpMaximize, LpVariable, lpSum, LpInteger, LpBinary, value
 
 # 1. Initialize the Supabase Client
 @st.cache_resource
@@ -183,6 +183,17 @@ for label in selected_labels:
     mandatory_requirements[event_id] = qty
 
 
+st.sidebar.markdown("---")
+st.sidebar.subheader("Current Requirements")
+col1, col2 = st.sidebar.columns(2)
+
+# Color the text red if it exceeds the limit
+ticket_color = "red" if mandatory_qty_total > max_tix else "green"
+budget_color = "red" if mandatory_cost_total > total_budget else "green"
+
+col1.markdown(f"Tickets: :{ticket_color}[{mandatory_qty_total} / {max_tix}]")
+col2.markdown(f"Cost: :{budget_color}[€{mandatory_cost_total:,.0f}]")
+
 # def optimize_itinerary(df, max_tickets=24, total_budget=2000):
 #     # --- 1. Data Cleaning for Optimizer ---
 
@@ -280,7 +291,6 @@ for label in selected_labels:
 #     selected_rows = [i for i in df.index if value(choices[i]) == 1]
 #     return df.loc[selected_rows]
 
-from pulp import LpProblem, LpMaximize, LpVariable, lpSum, LpInteger, LpBinary, value
 
 def optimize_itinerary(df, max_tickets=24, total_budget=20000, must_attend_ids=[]):
     # --- 1. Data Cleaning ---
@@ -369,6 +379,48 @@ def optimize_itinerary(df, max_tickets=24, total_budget=20000, must_attend_ids=[
     
     return result_df
 
+
+# --- Pre-Optimization Validation ---
+
+# 1. Calculate totals for mandatory selections
+mandatory_qty_total = sum(mandatory_requirements.values())
+mandatory_cost_total = sum(
+    df[df['id'] == eid]['Price_Num'].iloc[0] * qty 
+    for eid, qty in mandatory_requirements.items()
+)
+
+# 2. Check for Overlaps in Mandatory Selections
+# We filter the DF to just the mandatory events to check their timing
+mandatory_df = df[df['id'].isin(mandatory_requirements.keys())]
+has_time_conflict = False
+conflict_details = ""
+
+# Simple overlap check: compare each mandatory event against others
+m_sessions = mandatory_df.to_dict('records')
+for i, event_a in enumerate(m_sessions):
+    for event_b in m_sessions[i+1:]:
+        # If same day and times overlap
+        if event_a['Date'] == event_b['Date']:
+            if event_a['start_h'] < event_b['end_h'] and event_b['start_h'] < event_a['end_h']:
+                has_time_conflict = True
+                conflict_details = f"'{event_a['Session Description']}' and '{event_b['Session Description']}' overlap."
+
+# --- 3. The UI Error Handling ---
+if st.button("Optimize My Schedule"):
+    if mandatory_qty_total > max_tix:
+        st.error(f"🚫 **Too many tickets:** You've selected {mandatory_qty_total} mandatory tickets, but your limit is {max_tix}.")
+    
+    elif mandatory_cost_total > total_budget:
+        st.error(f"🚫 **Budget Exceeded:** Mandatory events cost €{mandatory_cost_total:,.2f}, exceeding your €{total_budget:,.2f} budget.")
+    
+    elif has_time_conflict:
+        st.error(f"🚫 **Schedule Conflict:** {conflict_details}")
+        
+    else:
+        # All checks passed! Proceed to optimization
+        with st.spinner("Calculating optimal gaps..."):
+            results = optimize_itinerary(df, max_tix, total_budget, mandatory_requirements)
+            # ... display results ...
 
 
 # --- Streamlit UI Integration ---
