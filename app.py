@@ -136,6 +136,8 @@ def optimize_itinerary(df, max_tickets=24, total_budget=2000):
     # Treat 'Not Ticketed' (-) as 0 price
     df['Price_Numeric'] = pd.to_numeric(df['Price'].replace('-', 0), errors='coerce').fillna(0)
     
+
+    
     # Convert "HH:MM" to float hours (e.g., "14:30" -> 14.5) for overlap math
     def to_hours(t):
         # If it's already a number (float/int), just return it
@@ -177,7 +179,7 @@ def optimize_itinerary(df, max_tickets=24, total_budget=2000):
     prob += lpSum([choices[i] for i in df.index]) <= max_tickets
 
     # Constraint B: Total Budget
-    prob += lpSum([choices[i] * df.loc[i, 'Price'] for i in df.index]) <= total_budget
+    prob += lpSum([choices[i] * df.loc[i, 'Price_Numeric'] for i in df.index]) <= total_budget
 
     # Constraint for 5 day window
     all_days = sorted(df['Games Day'].unique())
