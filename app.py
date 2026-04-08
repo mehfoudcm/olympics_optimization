@@ -159,6 +159,8 @@ def optimize_itinerary(df, max_tickets=24, total_budget=2000):
         if isinstance(t, str) and ':' in t:
             try:
                 h, m = map(int, t.split(':'))
+                if h = 0:
+                    return 24
                 return h + m / 60.0
             except ValueError:
                 return 0.0 # Return 0 if the string is malformed (e.g., "TBD")
