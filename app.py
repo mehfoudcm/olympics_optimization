@@ -94,6 +94,18 @@ def flatten_prices(df):
     df_filtered['Price_Num'] = pd.to_numeric(df_filtered['Price_Num'], errors='coerce').fillna(0.0)
     df_filtered['Games Day'] = pd.to_numeric(df_filtered['Games Day'], errors='coerce').fillna(0).astype(int)
     df_filtered = df_filtered[df_filtered['Games Day'] >= 11]
+
+    df_filtered['Date_Str'] = df_filtered['Date'].astype(str)
+    df_filtered['Time_Str'] = df_filtered['Start Time'].astype(str)
+    
+    # 2. Combine them into one string
+    # We use .strip() to remove any accidental spaces
+    combined_str = df_filtered['Date_Str'].str.strip() + ' ' + df_filtered['Time_Str'].str.strip()
+    
+    # 3. Convert to actual Python Datetime objects
+    # errors='coerce' turns "Not Ticketed" or empty times into NaT (Not a Time)
+    df_filtered['Session Start Date Time'] = pd.to_datetime(combined_str, errors='coerce')
+    df_filtered = df_filtered.drop(columns=['Date_Str', 'Time_Str'])
     
     return df_filtered
 
@@ -255,7 +267,7 @@ if st.button("Generate Optimized Schedule"):
     itinerary = optimize_itinerary(df_new_zone, max_tickets=tickets, total_budget=budget)
     
     st.write(f"### Found {len(itinerary)} events within your constraints:")
-    st.dataframe(itinerary[['id', 'Sport', 'Session Description', 'Date', 'Games Day', 'Start Time', 'End Time', 'Price Category', 'Price']])
+    st.dataframe(itinerary[['id', 'Sport', 'Session Description', 'Date', 'Games Day', 'Start Time', 'End Time', 'Session Start Date Time', 'Price Category', 'Price']])
     
     total_cost = itinerary['Price_Num'].sum()
     st.metric("Total Estimated Cost", f"${total_cost:,.2f}")
