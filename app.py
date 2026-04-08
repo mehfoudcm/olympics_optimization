@@ -134,7 +134,16 @@ must_attend_ids = df_new_zone[df_new_zone['label'].isin(must_attend_labels)]['id
 def optimize_itinerary(df, max_tickets=24, total_budget=2000):
     # --- 1. Data Cleaning for Optimizer ---
     # Treat 'Not Ticketed' (-) as 0 price
-    df['Price_Numeric'] = pd.to_numeric(df['Price'].replace('-', 0), errors='coerce').fillna(0)
+    df['Price_Num'] = df['Price'].astype(str)
+    
+    # Remove currency symbols, commas, and the dash
+    df['Price_Num'] = df['Price_Num'].str.replace('€', '', regex=False)
+    df['Price_Num'] = df['Price_Num'].str.replace(',', '', regex=False)
+    df['Price_Num'] = df['Price_Num'].str.replace(' - ', '0', regex=False)
+    df['Price_Num'] = df['Price_Num'].str.strip()
+
+    # Convert to float; invalid values become NaN, then fill NaN with 0
+    df['Price_Num'] = pd.to_numeric(df['Price_Num'], errors='coerce').fillna(0.0)
     df['Games Day'] = pd.to_numeric(df['Games Day'], errors='coerce').fillna(0).astype(int)
 
     
@@ -179,7 +188,7 @@ def optimize_itinerary(df, max_tickets=24, total_budget=2000):
     prob += lpSum([choices[i] for i in df.index]) <= max_tickets
 
     # Constraint B: Total Budget
-    prob += lpSum([choices[i] * df.loc[i, 'Price_Numeric'] for i in df.index]) <= total_budget
+    prob += lpSum([choices[i] * df.loc[i, 'Price_Num'] for i in df.index]) <= total_budget
 
     # Constraint for 5 day window
     # all_days = sorted(df['Games Day'].unique())
@@ -244,7 +253,7 @@ if st.button("Generate Optimized Schedule"):
     st.write(f"### Found {len(itinerary)} events within your constraints:")
     st.dataframe(itinerary[['id', 'Sport', 'Session Description', 'Date', 'Games Day', 'Start Time', 'End Time', 'Price Category', 'Price']])
     
-    total_cost = itinerary['Price_Numeric'].sum()
+    total_cost = itinerary['Price_Num'].sum()
     st.metric("Total Estimated Cost", f"${total_cost:,.2f}")
 
     if not itinerary.empty:
