@@ -63,7 +63,7 @@ def flatten_prices(df):
     
     return df_long
 
-df_new = flatten_prices(pd.DataFrame(raw_data))
+df_new = flatten_prices(pd.DataFrame(df_sessions))
 st.dataframe(df_new)
 
 # 3. Optimization Setup
