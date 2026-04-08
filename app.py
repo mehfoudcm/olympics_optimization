@@ -92,9 +92,20 @@ def optimize_itinerary(df, max_tickets=24, total_budget=2000):
     df['Price_Numeric'] = pd.to_numeric(df['Price'].replace('-', 0), errors='coerce').fillna(0)
     
     # Convert "HH:MM" to float hours (e.g., "14:30" -> 14.5) for overlap math
-    def to_hours(t_str):
-        h, m = map(int, t_str.split(':'))
-        return h + m / 60.0
+    def to_hours(t):
+        # If it's already a number (float/int), just return it
+        if isinstance(t, (int, float)):
+            return float(t)
+        
+        # If it's a string, split it
+        if isinstance(t, str) and ':' in t:
+            try:
+                h, m = map(int, t.split(':'))
+                return h + m / 60.0
+            except ValueError:
+                return 0.0 # Return 0 if the string is malformed (e.g., "TBD")
+                
+        return 0.0
 
     df['start_h'] = df['Start Time'].apply(to_hours)
     df['end_h'] = df['End Time'].apply(to_hours)
