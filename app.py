@@ -70,6 +70,8 @@ def flatten_prices(df):
         df_filtered['Session Code'] + "_" + 
         df_filtered['Price Category'].str.replace('Category ', '')
     )
+
+    df_filtered = df_filtered[df_filtered.Zone != 'OKC']
     
     return df_filtered
 
