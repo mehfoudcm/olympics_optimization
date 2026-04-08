@@ -118,6 +118,11 @@ tab1, tab2 = st.tabs(["⚙️ Settings & Mandatory Events", "📊 Optimized Resu
 with tab1:
     st.header("Filter Options")
 
+        
+    # User Controls
+    budget = st.slider("Max Budget ($)", 1000, 20000, 2000)
+    tickets = st.slider("Max Tickets", 1, 24, 12)
+    
     # 1. Get unique zones (sorted)
     # Ensure we drop any null values so the selector doesn't crash
     all_zones = sorted(df_new['Zone'].dropna().unique().tolist())
@@ -210,6 +215,8 @@ with tab2:
     st.dataframe(df_new)
 
     #--- Pre-Optimization Validation ---
+    # --- Streamlit UI Integration ---
+    st.title("🏅 Olympic Itinerary Optimizer")
 
     
     # --- 3. The UI Error Handling ---
@@ -226,42 +233,32 @@ with tab2:
         else:
             # All checks passed! Proceed to optimization
             with st.spinner("Calculating optimal gaps..."):
-                results = optimize_itinerary(df, max_tix, total_budget, mandatory_requirements)
+                # results = optimize_itinerary(df, max_tix, total_budget, mandatory_requirements)
                 # ... display results ...
     
-    # --- Streamlit UI Integration ---
-    st.title("🏅 Olympic Itinerary Optimizer")
-    
-    # User Controls
-    budget = st.sidebar.slider("Max Budget ($)", 1000, 20000, 2000)
-    tickets = st.sidebar.slider("Max Tickets", 1, 24, 12)
-    
-    
-    if st.button("Generate Optimized Schedule"):
-        # Assuming 'clean_df' is the result of your previous transformation
-        itinerary = optimize_itinerary(df_new_zone, max_tickets=tickets, total_budget=budget)
-    
-        itinerary['Total Cost'] = itinerary['Selected_Qty']*itinerary['Price_Num']
-    
+                itinerary = optimize_itinerary(df_new_zone, max_tickets=tickets, total_budget=budget)
+            
+                itinerary['Total Cost'] = itinerary['Selected_Qty']*itinerary['Price_Num']
+            
+                
+                st.write(f"### Found {len(itinerary)} events within your constraints:")
+                st.dataframe(itinerary[['id', 'Sport', 'Session Description', 'Selected_Qty', 'Date', 'Games Day', 'Start Time', 'End Time', 'Session Start Date Time', 'Price Category', 'Price', 'Total Cost']])
+            
+                st.write(f"### Planned to buy {itinerary['Selected_Qty'].sum()} total tickets")
+            
+                total_cost = (itinerary['Selected_Qty']*itinerary['Price_Num']).sum()
+                st.metric("Total Estimated Cost", f"${total_cost:,.2f}")
+            
+                if not itinerary.empty:
+                    first_day = itinerary['Games Day'].min()
+                    last_day = itinerary['Games Day'].max()
+                    window_length = last_day - first_day + 1
+                    
+                    st.info(f"📅 **Travel Window:** Day {first_day} to Day {last_day} ({window_length} days total)")
+                    
+                    # Optional: Filter the dataframe to show the schedule chronologically
+                    st.dataframe(itinerary.sort_values(['Games Day', 'start_h']))
         
-        st.write(f"### Found {len(itinerary)} events within your constraints:")
-        st.dataframe(itinerary[['id', 'Sport', 'Session Description', 'Selected_Qty', 'Date', 'Games Day', 'Start Time', 'End Time', 'Session Start Date Time', 'Price Category', 'Price', 'Total Cost']])
-    
-        st.write(f"### Planned to buy {itinerary['Selected_Qty'].sum()} total tickets")
-    
-        total_cost = (itinerary['Selected_Qty']*itinerary['Price_Num']).sum()
-        st.metric("Total Estimated Cost", f"${total_cost:,.2f}")
-    
-        if not itinerary.empty:
-            first_day = itinerary['Games Day'].min()
-            last_day = itinerary['Games Day'].max()
-            window_length = last_day - first_day + 1
-            
-            st.info(f"📅 **Travel Window:** Day {first_day} to Day {last_day} ({window_length} days total)")
-            
-            # Optional: Filter the dataframe to show the schedule chronologically
-            st.dataframe(itinerary.sort_values(['Games Day', 'start_h']))
-
 
 
 
