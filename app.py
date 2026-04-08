@@ -100,12 +100,12 @@ def flatten_prices(df):
     
     # 2. Combine them into one string
     # We use .strip() to remove any accidental spaces
-    combined_str = '2028-' + df_filtered['Date_Str'].str.strip() + ' ' + df_filtered['Time_Str'].str.strip()
+    combined_str = df_filtered['Date_Str'].str.strip()+ ', 2028 ' + df_filtered['Time_Str'].str.strip()
     
     # 3. Convert to actual Python Datetime objects
     # errors='coerce' turns "Not Ticketed" or empty times into NaT (Not a Time)
     df_filtered['Session Start Date Time'] = pd.to_datetime(combined_str, errors='coerce')
-    # df_filtered = df_filtered.drop(columns=['Date_Str', 'Time_Str'])
+    df_filtered = df_filtered.drop(columns=['Date_Str', 'Time_Str'])
     
     return df_filtered
 
