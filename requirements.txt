@@ -2,3 +2,4 @@ streamlit
 openai
 st-supabase-connection
 supabase
+pulp
