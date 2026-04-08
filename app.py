@@ -222,11 +222,11 @@ with tab2:
     
     # --- 3. The UI Error Handling ---
     if st.button("Optimize My Schedule"):
-        if mandatory_qty_total > max_tix:
-            st.error(f"🚫 **Too many tickets:** You've selected {mandatory_qty_total} mandatory tickets, but your limit is {max_tix}.")
+        if mandatory_qty_total > tickets:
+            st.error(f"🚫 **Too many tickets:** You've selected {mandatory_qty_total} mandatory tickets, but your limit is {tickets}.")
         
-        elif mandatory_cost_total > total_budget:
-            st.error(f"🚫 **Budget Exceeded:** Mandatory events cost €{mandatory_cost_total:,.2f}, exceeding your €{total_budget:,.2f} budget.")
+        elif mandatory_cost_total > budget:
+            st.error(f"🚫 **Budget Exceeded:** Mandatory events cost ${mandatory_cost_total:,.2f}, exceeding your ${budget:,.2f} budget.")
         
         elif has_time_conflict:
             st.error(f"🚫 **Schedule Conflict:** {conflict_details}")
