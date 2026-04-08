@@ -72,6 +72,14 @@ def flatten_prices(df):
     )
 
     df_filtered = df_filtered[df_filtered.Zone != 'OKC']
+    df_filtered = df_filtered[df_filtered.Zone != 'New York']
+    df_filtered = df_filtered[df_filtered.Zone != 'St. Louis']
+    df_filtered = df_filtered[df_filtered.Zone != 'Columbus']
+    df_filtered = df_filtered[df_filtered.Zone != 'Nashville']
+    df_filtered = df_filtered[df_filtered.Zone != 'San José']
+
+    df_filtered = df_filtered[df_filtered['Start Time'] != 'TBD']
+    
     
     return df_filtered
 
