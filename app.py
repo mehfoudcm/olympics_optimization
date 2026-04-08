@@ -110,30 +110,153 @@ def flatten_prices(df):
     return df_filtered
 
 df_new = flatten_prices(pd.DataFrame(df_sessions))
-st.dataframe(df_new)
 
-# --- Sidebar Setup ---
-st.sidebar.header("Filter Options")
+tab1, tab2 = st.tabs(["⚙️ Settings & Mandatory Events", "📊 Optimized Results"])
 
-# 1. Get unique zones (sorted)
-# Ensure we drop any null values so the selector doesn't crash
-all_zones = sorted(df_new['Zone'].dropna().unique().tolist())
+with tab1:
+    st.header("Filter Options")
 
-# 2. Multiselect for Zones
-selected_zones = st.sidebar.multiselect(
-    "Select Target Zones",
-    options=all_zones,
-    default=all_zones  # Defaults to all zones selected
-)
+    # 1. Get unique zones (sorted)
+    # Ensure we drop any null values so the selector doesn't crash
+    all_zones = sorted(df_new['Zone'].dropna().unique().tolist())
+    
+    # 2. Multiselect for Zones
+    selected_zones = st.multiselect(
+        "Select Target Zones",
+        options=all_zones,
+        default=all_zones  # Defaults to all zones selected
+    )
+    
+    # 3. Apply the filter to the dataframe
+    # This happens BEFORE the optimizer sees the data
+    df_new_zone = df_new[df_new['Zone'].isin(selected_zones)].copy()
+    
+    # 4. Display a warning if no zones are selected
+    if not selected_zones:
+        st.warning("Please select at least one Zone in the sidebar.")
+        st.stop()
 
-# 3. Apply the filter to the dataframe
-# This happens BEFORE the optimizer sees the data
-df_new_zone = df_new[df_new['Zone'].isin(selected_zones)].copy()
+    ## bringing in mandatory events
+    st.header("Mandatory Events")
+    
+    # Helper for the label
+    df_new_zone['label'] = df_new_zone['Session Description'] + " (" + df_new_zone['id'] + ")"
+    
+    # 1. Select the events
+    selected_labels = st.multiselect(
+        "Select events you MUST attend:",
+        options=df_new_zone['label'].unique()
+    )
+    
+    # 2. Decide the quantity for each selected event
+    mandatory_requirements = {}
+    for label in selected_labels:
+        # Find the ID for this label
+        event_id = df_new_zone[df_new_zone['label'] == label]['id'].iloc[0]
+        
+        qty = st.number_input(
+            f"Tickets for: {label}", 
+            min_value=1, 
+            max_value=4, 
+            value=1,
+            key=f"qty_{event_id}"
+        )
+        mandatory_requirements[event_id] = qty
+    
+    
+    st.markdown("---")
+    st.subheader("Current Requirements")
+    col1, col2 = st.columns(2)
+    
+    # Color the text red if it exceeds the limit
+    ticket_color = "red" if mandatory_qty_total > max_tix else "green"
+    budget_color = "red" if mandatory_cost_total > total_budget else "green"
+    
+    col1.markdown(f"Tickets: :{ticket_color}[{mandatory_qty_total} / {max_tix}]")
+    col2.markdown(f"Cost: :{budget_color}[€{mandatory_cost_total:,.0f}]")
 
-# 4. Display a warning if no zones are selected
-if not selected_zones:
-    st.warning("Please select at least one Zone in the sidebar.")
-    st.stop()
+
+with tab2:
+    st.write("Full Event Table")
+    st.dataframe(df_new)
+
+    #--- Pre-Optimization Validation ---
+
+    # 1. Calculate totals for mandatory selections
+    mandatory_qty_total = sum(mandatory_requirements.values())
+    mandatory_cost_total = sum(
+        df[df['id'] == eid]['Price_Num'].iloc[0] * qty 
+        for eid, qty in mandatory_requirements.items()
+    )
+    
+    # 2. Check for Overlaps in Mandatory Selections
+    # We filter the DF to just the mandatory events to check their timing
+    mandatory_df = df[df['id'].isin(mandatory_requirements.keys())]
+    has_time_conflict = False
+    conflict_details = ""
+    
+    # Simple overlap check: compare each mandatory event against others
+    m_sessions = mandatory_df.to_dict('records')
+    for i, event_a in enumerate(m_sessions):
+        for event_b in m_sessions[i+1:]:
+            # If same day and times overlap
+            if event_a['Date'] == event_b['Date']:
+                if event_a['start_h'] < event_b['end_h'] and event_b['start_h'] < event_a['end_h']:
+                    has_time_conflict = True
+                    conflict_details = f"'{event_a['Session Description']}' and '{event_b['Session Description']}' overlap."
+    
+    # --- 3. The UI Error Handling ---
+    if st.button("Optimize My Schedule"):
+        if mandatory_qty_total > max_tix:
+            st.error(f"🚫 **Too many tickets:** You've selected {mandatory_qty_total} mandatory tickets, but your limit is {max_tix}.")
+        
+        elif mandatory_cost_total > total_budget:
+            st.error(f"🚫 **Budget Exceeded:** Mandatory events cost €{mandatory_cost_total:,.2f}, exceeding your €{total_budget:,.2f} budget.")
+        
+        elif has_time_conflict:
+            st.error(f"🚫 **Schedule Conflict:** {conflict_details}")
+            
+        else:
+            # All checks passed! Proceed to optimization
+            with st.spinner("Calculating optimal gaps..."):
+                results = optimize_itinerary(df, max_tix, total_budget, mandatory_requirements)
+                # ... display results ...
+    
+    # --- Streamlit UI Integration ---
+    st.title("🏅 Olympic Itinerary Optimizer")
+    
+    # User Controls
+    budget = st.sidebar.slider("Max Budget ($)", 1000, 20000, 2000)
+    tickets = st.sidebar.slider("Max Tickets", 1, 24, 12)
+    
+    
+    if st.button("Generate Optimized Schedule"):
+        # Assuming 'clean_df' is the result of your previous transformation
+        itinerary = optimize_itinerary(df_new_zone, max_tickets=tickets, total_budget=budget)
+    
+        itinerary['Total Cost'] = itinerary['Selected_Qty']*itinerary['Price_Num']
+    
+        
+        st.write(f"### Found {len(itinerary)} events within your constraints:")
+        st.dataframe(itinerary[['id', 'Sport', 'Session Description', 'Selected_Qty', 'Date', 'Games Day', 'Start Time', 'End Time', 'Session Start Date Time', 'Price Category', 'Price', 'Total Cost']])
+    
+        st.write(f"### Planned to buy {itinerary['Selected_Qty'].sum()} total tickets")
+    
+        total_cost = (itinerary['Selected_Qty']*itinerary['Price_Num']).sum()
+        st.metric("Total Estimated Cost", f"${total_cost:,.2f}")
+    
+        if not itinerary.empty:
+            first_day = itinerary['Games Day'].min()
+            last_day = itinerary['Games Day'].max()
+            window_length = last_day - first_day + 1
+            
+            st.info(f"📅 **Travel Window:** Day {first_day} to Day {last_day} ({window_length} days total)")
+            
+            # Optional: Filter the dataframe to show the schedule chronologically
+            st.dataframe(itinerary.sort_values(['Games Day', 'start_h']))
+
+
+
 
 
 
@@ -155,44 +278,6 @@ if not selected_zones:
 # # Map those labels back to the unique 'id'
 # must_attend_ids = df_new_zone[df_new_zone['label'].isin(must_attend_labels)]['id'].tolist()
 
-
-st.sidebar.header("Mandatory Events")
-
-# Helper for the label
-df_new_zone['label'] = df_new_zone['Session Description'] + " (" + df_new_zone['id'] + ")"
-
-# 1. Select the events
-selected_labels = st.sidebar.multiselect(
-    "Select events you MUST attend:",
-    options=df_new_zone['label'].unique()
-)
-
-# 2. Decide the quantity for each selected event
-mandatory_requirements = {}
-for label in selected_labels:
-    # Find the ID for this label
-    event_id = df_new_zone[df_new_zone['label'] == label]['id'].iloc[0]
-    
-    qty = st.sidebar.number_input(
-        f"Tickets for: {label}", 
-        min_value=1, 
-        max_value=4, 
-        value=1,
-        key=f"qty_{event_id}"
-    )
-    mandatory_requirements[event_id] = qty
-
-
-st.sidebar.markdown("---")
-st.sidebar.subheader("Current Requirements")
-col1, col2 = st.sidebar.columns(2)
-
-# Color the text red if it exceeds the limit
-ticket_color = "red" if mandatory_qty_total > max_tix else "green"
-budget_color = "red" if mandatory_cost_total > total_budget else "green"
-
-col1.markdown(f"Tickets: :{ticket_color}[{mandatory_qty_total} / {max_tix}]")
-col2.markdown(f"Cost: :{budget_color}[€{mandatory_cost_total:,.0f}]")
 
 # def optimize_itinerary(df, max_tickets=24, total_budget=2000):
 #     # --- 1. Data Cleaning for Optimizer ---
@@ -380,78 +465,4 @@ def optimize_itinerary(df, max_tickets=24, total_budget=20000, must_attend_ids=[
     return result_df
 
 
-# --- Pre-Optimization Validation ---
 
-# 1. Calculate totals for mandatory selections
-mandatory_qty_total = sum(mandatory_requirements.values())
-mandatory_cost_total = sum(
-    df[df['id'] == eid]['Price_Num'].iloc[0] * qty 
-    for eid, qty in mandatory_requirements.items()
-)
-
-# 2. Check for Overlaps in Mandatory Selections
-# We filter the DF to just the mandatory events to check their timing
-mandatory_df = df[df['id'].isin(mandatory_requirements.keys())]
-has_time_conflict = False
-conflict_details = ""
-
-# Simple overlap check: compare each mandatory event against others
-m_sessions = mandatory_df.to_dict('records')
-for i, event_a in enumerate(m_sessions):
-    for event_b in m_sessions[i+1:]:
-        # If same day and times overlap
-        if event_a['Date'] == event_b['Date']:
-            if event_a['start_h'] < event_b['end_h'] and event_b['start_h'] < event_a['end_h']:
-                has_time_conflict = True
-                conflict_details = f"'{event_a['Session Description']}' and '{event_b['Session Description']}' overlap."
-
-# --- 3. The UI Error Handling ---
-if st.button("Optimize My Schedule"):
-    if mandatory_qty_total > max_tix:
-        st.error(f"🚫 **Too many tickets:** You've selected {mandatory_qty_total} mandatory tickets, but your limit is {max_tix}.")
-    
-    elif mandatory_cost_total > total_budget:
-        st.error(f"🚫 **Budget Exceeded:** Mandatory events cost €{mandatory_cost_total:,.2f}, exceeding your €{total_budget:,.2f} budget.")
-    
-    elif has_time_conflict:
-        st.error(f"🚫 **Schedule Conflict:** {conflict_details}")
-        
-    else:
-        # All checks passed! Proceed to optimization
-        with st.spinner("Calculating optimal gaps..."):
-            results = optimize_itinerary(df, max_tix, total_budget, mandatory_requirements)
-            # ... display results ...
-
-
-# --- Streamlit UI Integration ---
-st.title("🏅 Olympic Itinerary Optimizer")
-
-# User Controls
-budget = st.sidebar.slider("Max Budget ($)", 1000, 20000, 2000)
-tickets = st.sidebar.slider("Max Tickets", 1, 24, 12)
-
-
-if st.button("Generate Optimized Schedule"):
-    # Assuming 'clean_df' is the result of your previous transformation
-    itinerary = optimize_itinerary(df_new_zone, max_tickets=tickets, total_budget=budget)
-
-    itinerary['Total Cost'] = itinerary['Selected_Qty']*itinerary['Price_Num']
-
-    
-    st.write(f"### Found {len(itinerary)} events within your constraints:")
-    st.dataframe(itinerary[['id', 'Sport', 'Session Description', 'Selected_Qty', 'Date', 'Games Day', 'Start Time', 'End Time', 'Session Start Date Time', 'Price Category', 'Price', 'Total Cost']])
-
-    st.write(f"### Planned to buy {itinerary['Selected_Qty'].sum()} total tickets")
-
-    total_cost = (itinerary['Selected_Qty']*itinerary['Price_Num']).sum()
-    st.metric("Total Estimated Cost", f"${total_cost:,.2f}")
-
-    if not itinerary.empty:
-        first_day = itinerary['Games Day'].min()
-        last_day = itinerary['Games Day'].max()
-        window_length = last_day - first_day + 1
-        
-        st.info(f"📅 **Travel Window:** Day {first_day} to Day {last_day} ({window_length} days total)")
-        
-        # Optional: Filter the dataframe to show the schedule chronologically
-        st.dataframe(itinerary.sort_values(['Games Day', 'start_h']))
