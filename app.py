@@ -80,6 +80,18 @@ def flatten_prices(df):
 
     df_filtered = df_filtered[df_filtered['Start Time'] != 'TBD']
     
+    # Treat 'Not Ticketed' (-) as 0 price
+    df_filtered['Price_Num'] = df_filtered['Price'].astype(str)
+    
+    # Remove currency symbols, commas, and the dash
+    df_filtered['Price_Num'] = df_filtered['Price_Num'].str.replace('$', '', regex=False)
+    df_filtered['Price_Num'] = df_filtered['Price_Num'].str.replace(',', '', regex=False)
+    df_filtered['Price_Num'] = df_filtered['Price_Num'].str.replace(' - ', '0', regex=False)
+    df_filtered['Price_Num'] = df_filtered['Price_Num'].str.strip()
+
+    # Convert to float; invalid values become NaN, then fill NaN with 0
+    df_filtered['Price_Num'] = pd.to_numeric(df_filtered['Price_Num'], errors='coerce').fillna(0.0)
+    df_filtered['Games Day'] = pd.to_numeric(df_filtered['Games Day'], errors='coerce').fillna(0).astype(int)
     
     return df_filtered
 
@@ -133,18 +145,6 @@ must_attend_ids = df_new_zone[df_new_zone['label'].isin(must_attend_labels)]['id
 
 def optimize_itinerary(df, max_tickets=24, total_budget=2000):
     # --- 1. Data Cleaning for Optimizer ---
-    # Treat 'Not Ticketed' (-) as 0 price
-    df['Price_Num'] = df['Price'].astype(str)
-    
-    # Remove currency symbols, commas, and the dash
-    df['Price_Num'] = df['Price_Num'].str.replace('€', '', regex=False)
-    df['Price_Num'] = df['Price_Num'].str.replace(',', '', regex=False)
-    df['Price_Num'] = df['Price_Num'].str.replace(' - ', '0', regex=False)
-    df['Price_Num'] = df['Price_Num'].str.strip()
-
-    # Convert to float; invalid values become NaN, then fill NaN with 0
-    df['Price_Num'] = pd.to_numeric(df['Price_Num'], errors='coerce').fillna(0.0)
-    df['Games Day'] = pd.to_numeric(df['Games Day'], errors='coerce').fillna(0).astype(int)
 
     
     # Convert "HH:MM" to float hours (e.g., "14:30" -> 14.5) for overlap math
