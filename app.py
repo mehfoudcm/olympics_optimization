@@ -282,7 +282,7 @@ for label in selected_labels:
 
 from pulp import LpProblem, LpMaximize, LpVariable, lpSum, LpInteger, LpBinary, value
 
-def optimize_itinerary(df, max_tickets=24, total_budget=2000, must_attend_ids=[]):
+def optimize_itinerary(df, max_tickets=24, total_budget=20000, must_attend_ids=[]):
     # --- 1. Data Cleaning ---
     def to_hours(t):
         if isinstance(t, (int, float)): return float(t)
@@ -375,7 +375,7 @@ def optimize_itinerary(df, max_tickets=24, total_budget=2000, must_attend_ids=[]
 st.title("🏅 Olympic Itinerary Optimizer")
 
 # User Controls
-budget = st.sidebar.slider("Max Budget ($)", 100, 5000, 1500)
+budget = st.sidebar.slider("Max Budget ($)", 1000, 20000, 2000)
 tickets = st.sidebar.slider("Max Tickets", 1, 24, 12)
 
 
