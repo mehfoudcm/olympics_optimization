@@ -91,7 +91,7 @@ st.sidebar.header("Filter Options")
 
 # 1. Get unique zones (sorted)
 # Ensure we drop any null values so the selector doesn't crash
-all_zones = sorted(clean_df['Zone'].dropna().unique().tolist())
+all_zones = sorted(df_new['Zone'].dropna().unique().tolist())
 
 # 2. Multiselect for Zones
 selected_zones = st.sidebar.multiselect(
