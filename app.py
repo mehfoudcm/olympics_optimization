@@ -86,6 +86,29 @@ def flatten_prices(df):
 df_new = flatten_prices(pd.DataFrame(df_sessions))
 st.dataframe(df_new)
 
+# --- Sidebar Setup ---
+st.sidebar.header("Filter Options")
+
+# 1. Get unique zones (sorted)
+# Ensure we drop any null values so the selector doesn't crash
+all_zones = sorted(clean_df['Zone'].dropna().unique().tolist())
+
+# 2. Multiselect for Zones
+selected_zones = st.sidebar.multiselect(
+    "Select Target Zones",
+    options=all_zones,
+    default=all_zones  # Defaults to all zones selected
+)
+
+# 3. Apply the filter to the dataframe
+# This happens BEFORE the optimizer sees the data
+df_new_zone = df_new[df_new['Zone'].isin(selected_zones)].copy()
+
+# 4. Display a warning if no zones are selected
+if not selected_zones:
+    st.warning("Please select at least one Zone in the sidebar.")
+    st.stop()
+
 def optimize_itinerary(df, max_tickets=24, total_budget=2000):
     # --- 1. Data Cleaning for Optimizer ---
     # Treat 'Not Ticketed' (-) as 0 price
@@ -170,7 +193,7 @@ tickets = st.sidebar.slider("Max Tickets", 1, 24, 12)
 
 if st.button("Generate Optimized Schedule"):
     # Assuming 'clean_df' is the result of your previous transformation
-    itinerary = optimize_itinerary(df_new, max_tickets=tickets, total_budget=budget)
+    itinerary = optimize_itinerary(df_new_zone, max_tickets=tickets, total_budget=budget)
     
     st.write(f"### Found {len(itinerary)} events within your constraints:")
     st.dataframe(itinerary[['Sport', 'Session Description', 'Date', 'Start Time', 'Price Category', 'Price']])
