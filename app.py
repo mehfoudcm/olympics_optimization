@@ -203,10 +203,10 @@ with tab1:
     col1, col2 = st.columns(2)
     
     # Color the text red if it exceeds the limit
-    ticket_color = "red" if mandatory_qty_total > max_tix else "green"
-    budget_color = "red" if mandatory_cost_total > total_budget else "green"
+    ticket_color = "red" if mandatory_qty_total > tickets else "green"
+    budget_color = "red" if mandatory_cost_total > budget else "green"
     
-    col1.markdown(f"Tickets: :{ticket_color}[{mandatory_qty_total} / {max_tix}]")
+    col1.markdown(f"Tickets: :{ticket_color}[{mandatory_qty_total} / {tickets}]")
     col2.markdown(f"Cost: :{budget_color}[€{mandatory_cost_total:,.0f}]")
 
 
