@@ -135,7 +135,7 @@ def optimize_itinerary(df, max_tickets=24, total_budget=2000):
     # --- 1. Data Cleaning for Optimizer ---
     # Treat 'Not Ticketed' (-) as 0 price
     df['Price_Numeric'] = pd.to_numeric(df['Price'].replace('-', 0), errors='coerce').fillna(0)
-    
+    df['Games Day'] = pd.to_numeric(df['Games Day'], errors='coerce').fillna(0).astype(int)
 
     
     # Convert "HH:MM" to float hours (e.g., "14:30" -> 14.5) for overlap math
