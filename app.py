@@ -382,9 +382,11 @@ tickets = st.sidebar.slider("Max Tickets", 1, 24, 12)
 if st.button("Generate Optimized Schedule"):
     # Assuming 'clean_df' is the result of your previous transformation
     itinerary = optimize_itinerary(df_new_zone, max_tickets=tickets, total_budget=budget)
+
+    itinerary['Total Cost'] = itinerary['Selected_Qty']*itinerary['Price']
     
     st.write(f"### Found {len(itinerary)} events within your constraints:")
-    st.dataframe(itinerary[['id', 'Sport', 'Session Description', 'Selected_Qty', 'Date', 'Games Day', 'Start Time', 'End Time', 'Session Start Date Time', 'Price Category', 'Price']])
+    st.dataframe(itinerary[['id', 'Sport', 'Session Description', 'Selected_Qty', 'Date', 'Games Day', 'Start Time', 'End Time', 'Session Start Date Time', 'Price Category', 'Price', 'Total Cost']])
     
     total_cost = (itinerary['Selected_Qty']*itinerary['Price_Num']).sum()
     st.metric("Total Estimated Cost", f"${total_cost:,.2f}")
