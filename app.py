@@ -39,15 +39,15 @@ st.dataframe(df_sessions)
 prob = LpProblem("Olympic_Planning", LpMaximize)
 
 # Create a binary variable for each event (1 if we go, 0 if not)
-event_vars = LpVariable.dicts("Event", [e['id'] for e in sessions_data], cat=LpBinary)
+event_vars = LpVariable.dicts("Event", [e['Session Code'] for e in sessions_data], cat=LpBinary)
 
 # Objective: Maximize number of events attended
-prob += lpSum([event_vars[e['id']] for e in sessions_data])
+prob += lpSum([event_vars[e['Session Code']] for e in sessions_data])
 
 # --- CONSTRAINTS ---
 
 # Constraint 1: Max 24 tickets
-prob += lpSum([event_vars[e['id']] for e in sessions_data]) <= 24
+prob += lpSum([event_vars[e['Session Code']] for e in sessions_data]) <= 24
 
 # Constraint 2: Budget (Example: $200000)
 budget = st.sidebar.number_input("Total Budget ($)", value=200000)
