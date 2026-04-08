@@ -179,6 +179,21 @@ def optimize_itinerary(df, max_tickets=24, total_budget=2000):
     # Constraint B: Total Budget
     prob += lpSum([choices[i] * df.loc[i, 'Price'] for i in df.index]) <= total_budget
 
+    # Constraint for 5 day window
+    all_days = sorted(df['Games Day'].unique())
+    for d1 in all_days:
+        for d2 in all_days:
+            if d2 - d1 > 4:
+                # If d2 is more than 4 days after d1, you cannot pick BOTH.
+                # Logic: choices in d1 + choices in d2 must be restricted
+                idx_day1 = df[df['Games Day'] == d1].index
+                idx_day2 = df[df['Games Day'] == d2].index
+                
+                for i in idx_day1:
+                    for j in idx_day2:
+                        # Constraint: You cannot select both event i and event j
+                        prob += choices[i] + choices[j] <= 1
+    
     # Constraint C: Only ONE category per Session Code
     # (Stops you from buying Category A AND B for the same race)
     for code in df['Session Code'].unique():
@@ -228,4 +243,14 @@ if st.button("Generate Optimized Schedule"):
     st.dataframe(itinerary[['id', 'Sport', 'Session Description', 'Date', 'Session Day', 'Start Time', 'End Time', 'Price Category', 'Price']])
     
     total_cost = itinerary['Price_Numeric'].sum()
-    st.metric("Total Estimated Cost", f"€{total_cost:,.2f}")
+    st.metric("Total Estimated Cost", f"${total_cost:,.2f}")
+
+    if not itinerary.empty:
+        first_day = itinerary['Games Day'].min()
+        last_day = itinerary['Games Day'].max()
+        window_length = last_day - first_day + 1
+        
+        st.info(f"📅 **Travel Window:** Day {first_day} to Day {last_day} ({window_length} days total)")
+        
+        # Optional: Filter the dataframe to show the schedule chronologically
+        st.dataframe(itinerary.sort_values(['Games Day', 'start_h']))
