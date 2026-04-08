@@ -207,7 +207,7 @@ with tab1:
     budget_color = "red" if mandatory_cost_total > budget else "green"
     
     col1.markdown(f"Tickets: :{ticket_color}[{mandatory_qty_total} / {tickets}]")
-    col2.markdown(f"Cost: :{budget_color}[€{mandatory_cost_total:,.0f}]")
+    col2.markdown(f"Cost: :{budget_color}[${mandatory_cost_total:,.0f}]")
 
 
 with tab2:
