@@ -4,7 +4,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 # from st_supabase_connection import SupabaseConnection
 from supabase import create_client, Client
-from pulp import LpProblem, LpBinary, LpVariable, lpSum, LpMaximize
+from pulp import LpProblem, LpBinary, LpVariable, lpSum, LpMaximize, value
 
 # 1. Initialize the Supabase Client
 @st.cache_resource
