@@ -76,40 +76,83 @@ def flatten_prices(df):
 df_new = flatten_prices(pd.DataFrame(df_sessions))
 st.dataframe(df_new)
 
-# 3. Optimization Setup
-prob = LpProblem("Olympic_Planning", LpMaximize)
-
-# Create a binary variable for each event (1 if we go, 0 if not)
-event_vars = LpVariable.dicts("Event", [e['Session Code'] for e in sessions_data], cat=LpBinary)
-
-# Objective: Maximize number of events attended
-prob += lpSum([event_vars[e['Session Code']] for e in sessions_data])
-
-# --- CONSTRAINTS ---
-
-# Constraint 1: Max 24 tickets
-prob += lpSum([event_vars[e['Session Code']] for e in sessions_data]) <= 24
-
-# Constraint 2: Budget (Example: $200000)
-budget = st.sidebar.number_input("Total Budget ($)", value=200000)
-prob += lpSum([event_vars[e['id']] * e['price'] for e in sessions_data]) <= budget
-
-# Constraint 3: No Overlaps (The Time-Slot Constraint)
-# We group events by day and check for overlapping hours
-for day in range(1, 6): # Days 1 to 5
-    day_events = [e for e in sessions_data if e['day'] == day]
-    for i, e1 in enumerate(day_events):
-        for e2 in day_events[i+1:]:
-            # If times overlap, we can't pick both
-            if (e1['start_time'] < e2['end_time'] and e2['start_time'] < e1['end_time']):
-                prob += event_vars[e1['id']] + event_vars[e2['id']] <= 1
-
-# 4. Solve and Display
-if st.button("Optimize My Schedule"):
-    prob.solve()
-    selected_ids = [e_id for e_id in event_vars if event_vars[e_id].varValue == 1]
+def optimize_itinerary(df, max_tickets=24, total_budget=2000):
+    # --- 1. Data Cleaning for Optimizer ---
+    # Treat 'Not Ticketed' (-) as 0 price
+    df['Price_Numeric'] = pd.to_numeric(df['Price'].replace('-', 0), errors='coerce').fillna(0)
     
-    st.success(f"Optimized! You can attend {len(selected_ids)} events.")
-    # Display results in a table
-    itinerary = [e for e in sessions_data if e['id'] in selected_ids]
-    st.table(itinerary)
+    # Convert "HH:MM" to float hours (e.g., "14:30" -> 14.5) for overlap math
+    def to_hours(t_str):
+        h, m = map(int, t_str.split(':'))
+        return h + m / 60.0
+
+    df['start_h'] = df['Start Time'].apply(to_hours)
+    df['end_h'] = df['End Time'].apply(to_hours)
+
+    # --- 2. Initialize Model ---
+    prob = LpProblem("Olympic_Optimization", LpMaximize)
+
+    # Create a binary variable for every unique Row ID (SessionCode_Category)
+    # x[i] = 1 means we attend that session at that price category
+    choices = LpVariable.dicts("Select", df.index, cat=LpBinary)
+
+    # OBJECTIVE: Maximize the number of events attended
+    prob += lpSum([choices[i] for i in df.index])
+
+    # --- 3. Constraints ---
+
+    # Constraint A: Total Ticket Limit
+    prob += lpSum([choices[i] for i in df.index]) <= max_tickets
+
+    # Constraint B: Total Budget
+    prob += lpSum([choices[i] * df.loc[i, 'Price_Numeric'] for i in df.index]) <= total_budget
+
+    # Constraint C: Only ONE category per Session Code
+    # (Stops you from buying Category A AND B for the same race)
+    for code in df['Session Code'].unique():
+        session_indices = df[df['Session Code'] == code].index
+        prob += lpSum([choices[i] for i in session_indices]) <= 1
+
+    # Constraint D: No Overlapping Times
+    # We only check overlaps for events on the same day
+    for day in df['Date'].unique():
+        day_df = df[df['Date'] == day]
+        unique_sessions = day_df['Session Code'].unique()
+        
+        # Compare every session against every other session on that day
+        for i, code_a in enumerate(unique_sessions):
+            for code_b in unique_sessions[i+1:]:
+                # Get timing for these sessions
+                row_a = day_df[day_df['Session Code'] == code_a].iloc[0]
+                row_b = day_df[day_df['Session Code'] == code_b].iloc[0]
+                
+                # Check for overlap: StartA < EndB AND StartB < EndA
+                if row_a['start_h'] < row_b['end_h'] and row_b['start_h'] < row_a['end_h']:
+                    # Constraint: Selection of all categories of A + all of B must be <= 1
+                    idx_a = day_df[day_df['Session Code'] == code_a].index
+                    idx_b = day_df[day_df['Session Code'] == code_b].index
+                    prob += lpSum([choices[k] for k in idx_a]) + lpSum([choices[m] for m in idx_b]) <= 1
+
+    # --- 4. Solve ---
+    prob.solve()
+
+    # --- 5. Extract Results ---
+    selected_rows = [i for i in df.index if value(choices[i]) == 1]
+    return df.loc[selected_rows]
+
+# --- Streamlit UI Integration ---
+st.title("🏅 Olympic Itinerary Optimizer")
+
+# User Controls
+budget = st.sidebar.slider("Max Budget (€)", 100, 5000, 1500)
+tickets = st.sidebar.slider("Max Tickets", 1, 24, 12)
+
+if st.button("Generate Optimized Schedule"):
+    # Assuming 'clean_df' is the result of your previous transformation
+    itinerary = optimize_itinerary(clean_df, max_tickets=tickets, total_budget=budget)
+    
+    st.write(f"### Found {len(itinerary)} events within your constraints:")
+    st.dataframe(itinerary[['Sport', 'Session Description', 'Date', 'Start Time', 'Price Category', 'Price']])
+    
+    total_cost = itinerary['Price_Numeric'].sum()
+    st.metric("Total Estimated Cost", f"€{total_cost:,.2f}")
