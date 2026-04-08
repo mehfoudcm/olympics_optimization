@@ -389,7 +389,7 @@ if st.button("Generate Optimized Schedule"):
     st.write(f"### Found {len(itinerary)} events within your constraints:")
     st.dataframe(itinerary[['id', 'Sport', 'Session Description', 'Selected_Qty', 'Date', 'Games Day', 'Start Time', 'End Time', 'Session Start Date Time', 'Price Category', 'Price', 'Total Cost']])
 
-    st.write(f"### Planned to see {itinerary['Selected_Qty'].sum()} total tickets")
+    st.write(f"### Planned to buy {itinerary['Selected_Qty'].sum()} total tickets")
 
     total_cost = (itinerary['Selected_Qty']*itinerary['Price_Num']).sum()
     st.metric("Total Estimated Cost", f"${total_cost:,.2f}")
