@@ -159,19 +159,19 @@ if not selected_zones:
 st.sidebar.header("Mandatory Events")
 
 # Helper for the label
-clean_df['label'] = clean_df['Session Description'] + " (" + clean_df['id'] + ")"
+df_new_zone['label'] = df_new_zone['Session Description'] + " (" + df_new_zone['id'] + ")"
 
 # 1. Select the events
 selected_labels = st.sidebar.multiselect(
     "Select events you MUST attend:",
-    options=clean_df['label'].unique()
+    options=df_new_zone['label'].unique()
 )
 
 # 2. Decide the quantity for each selected event
 mandatory_requirements = {}
 for label in selected_labels:
     # Find the ID for this label
-    event_id = clean_df[clean_df['label'] == label]['id'].iloc[0]
+    event_id = df_new_zone[df_new_zone['label'] == label]['id'].iloc[0]
     
     qty = st.sidebar.number_input(
         f"Tickets for: {label}", 
