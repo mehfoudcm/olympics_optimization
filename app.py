@@ -32,6 +32,8 @@ sessions_data = response_sessions.data # bringing in the sessions data for olymp
 
 df_sessions = pd.DataFrame(sessions_data)
 
+
+st.write("Full Event Table")
 st.dataframe(df_sessions)
 
 
@@ -162,25 +164,10 @@ with tab1:
             key=f"qty_{event_id}"
         )
         mandatory_requirements[event_id] = qty
-    
-    
-    st.markdown("---")
-    st.subheader("Current Requirements")
-    col1, col2 = st.columns(2)
-    
-    # Color the text red if it exceeds the limit
-    ticket_color = "red" if mandatory_qty_total > max_tix else "green"
-    budget_color = "red" if mandatory_cost_total > total_budget else "green"
-    
-    col1.markdown(f"Tickets: :{ticket_color}[{mandatory_qty_total} / {max_tix}]")
-    col2.markdown(f"Cost: :{budget_color}[€{mandatory_cost_total:,.0f}]")
 
 
-with tab2:
-    st.write("Full Event Table")
-    st.dataframe(df_new)
 
-    #--- Pre-Optimization Validation ---
+     #--- Pre-Optimization Validation ---
 
     # 1. Calculate totals for mandatory selections
     mandatory_qty_total = sum(mandatory_requirements.values())
@@ -204,6 +191,26 @@ with tab2:
                 if event_a['start_h'] < event_b['end_h'] and event_b['start_h'] < event_a['end_h']:
                     has_time_conflict = True
                     conflict_details = f"'{event_a['Session Description']}' and '{event_b['Session Description']}' overlap."
+
+    
+    st.markdown("---")
+    st.subheader("Current Requirements")
+    col1, col2 = st.columns(2)
+    
+    # Color the text red if it exceeds the limit
+    ticket_color = "red" if mandatory_qty_total > max_tix else "green"
+    budget_color = "red" if mandatory_cost_total > total_budget else "green"
+    
+    col1.markdown(f"Tickets: :{ticket_color}[{mandatory_qty_total} / {max_tix}]")
+    col2.markdown(f"Cost: :{budget_color}[€{mandatory_cost_total:,.0f}]")
+
+
+with tab2:
+    st.write("Full Event Table")
+    st.dataframe(df_new)
+
+    #--- Pre-Optimization Validation ---
+
     
     # --- 3. The UI Error Handling ---
     if st.button("Optimize My Schedule"):
