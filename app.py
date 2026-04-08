@@ -60,8 +60,18 @@ def flatten_prices(df):
     
     # Clean up: Remove rows where Price might be null (if a category isn't offered)
     df_long = df_long.dropna(subset=['Price'])
+
+    is_not_empty = df_long['Price'].astype(str).str.strip() != '-'
+    is_not_ticketed = df_long['Session Description'].str.contains('Not Ticketed', case=False, na=False)
     
-    return df_long
+    df_filtered = df_long[is_not_empty | is_not_ticketed].copy()
+    
+    df_filtered['id'] = (
+        df_filtered['Session Code'] + "_" + 
+        df_filtered['Price Category'].str.replace('Category ', '')
+    )
+    
+    return df_filtered
 
 df_new = flatten_prices(pd.DataFrame(df_sessions))
 st.dataframe(df_new)
