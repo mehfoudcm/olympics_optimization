@@ -194,7 +194,7 @@ with tab1:
         for event_b in m_sessions[i+1:]:
             # If same day and times overlap
             if event_a['Date'] == event_b['Date']:
-                if event_a['start_h'] < event_b['end_h'] and event_b['start_h'] < event_a['end_h']:
+                if event_a['Start Time'] < event_b['End Time'] and event_b['Start Time'] < event_a['End Time']:
                     has_time_conflict = True
                     conflict_details = f"'{event_a['Session Description']}' and '{event_b['Session Description']}' overlap."
 
