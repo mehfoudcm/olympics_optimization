@@ -172,13 +172,13 @@ with tab1:
     # 1. Calculate totals for mandatory selections
     mandatory_qty_total = sum(mandatory_requirements.values())
     mandatory_cost_total = sum(
-        df[df['id'] == eid]['Price_Num'].iloc[0] * qty 
+        df_new_zone[df_new_zone['id'] == eid]['Price_Num'].iloc[0] * qty 
         for eid, qty in mandatory_requirements.items()
     )
     
     # 2. Check for Overlaps in Mandatory Selections
     # We filter the DF to just the mandatory events to check their timing
-    mandatory_df = df[df['id'].isin(mandatory_requirements.keys())]
+    mandatory_df = df_new_zone[df_new_zone['id'].isin(mandatory_requirements.keys())]
     has_time_conflict = False
     conflict_details = ""
     
