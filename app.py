@@ -150,7 +150,92 @@ def filter_conflicting_events(df, mandatory_requirements):
     
     return filtered_df
 
+def optimize_itinerary(df, max_tickets=24, total_budget=20000, must_attend_ids=[]):
+    # --- 1. Data Cleaning ---
+    def to_hours(t):
+        if isinstance(t, (int, float)): return float(t)
+        if isinstance(t, str) and ':' in t:
+            try:
+                parts = t.split(':')
+                h, m = int(parts[0]), int(parts[1])
+                return 24 if h == 0 else h + m / 60.0
+            except ValueError: return 0.0
+        return 0.0
 
+    df['start_h'] = df['Start Time'].apply(to_hours)
+    df['end_h'] = df['End Time'].apply(to_hours)
+
+    # --- 2. Initialize Model ---
+    prob = LpProblem("Olympic_MultiTicket_Optimization", LpMaximize)
+
+    # Main Variable: How many tickets to buy for this specific row (0 to 4)
+    # Use 'Integer' instead of 'Binary'
+    quantities = LpVariable.dicts("Qty", df.index, lowBound=0, upBound=4, cat=LpInteger)
+    
+    # Helper Variable: Is this specific session/category selected at all? (0 or 1)
+    is_selected = LpVariable.dicts("IsSelected", df.index, cat=LpBinary)
+
+    # OBJECTIVE: Maximize the total number of tickets purchased
+    prob += lpSum([quantities[i] for i in df.index])
+
+    # --- 3. Constraints ---
+
+    # Linking Constraint: If quantities[i] > 0, then is_selected[i] must be 1
+    # 1. Linking Quantities and Selection
+    for i in df.index:
+        prob += quantities[i] <= 4 * is_selected[i]
+        prob += quantities[i] >= 1 * is_selected[i]
+
+    # 2. MANDATORY REQUIREMENTS (Dynamic Quantities)
+    for i in df.index:
+        event_id = df.loc[i, 'id']
+        if event_id in mandatory_requirements:
+            required_qty = mandatory_requirements[event_id]
+            # Force the exact quantity requested in the sidebar
+            prob += quantities[i] == required_qty
+            prob += is_selected[i] == 1
+    
+    # 3. Budget (Price * Qty)
+    prob += lpSum([quantities[i] * df.loc[i, 'Price_Num'] for i in df.index]) <= total_budget
+
+    # 4. Total Ticket Limit
+    prob += lpSum([quantities[i] for i in df.index]) <= max_tickets
+
+    # 5. One Category per Session
+    for code in df['Session Code'].unique():
+        s_idx = df[df['Session Code'] == code].index
+        prob += lpSum([is_selected[i] for i in s_idx]) <= 1
+        
+    # Constraint D: No Overlapping Times
+    # If sessions overlap, you can't be in two places at once. 
+    # Therefore, the sum of "is_selected" for overlapping sessions must be <= 1
+    for day in df['Date'].unique():
+        day_df = df[df['Date'] == day]
+        unique_sessions = day_df['Session Code'].unique()
+        
+        for i, code_a in enumerate(unique_sessions):
+            for code_b in unique_sessions[i+1:]:
+                row_a = day_df[day_df['Session Code'] == code_a].iloc[0]
+                row_b = day_df[day_df['Session Code'] == code_b].iloc[0]
+                
+                if row_a['start_h'] < row_b['end_h'] and row_b['start_h'] < row_a['end_h']:
+                    idx_a = day_df[day_df['Session Code'] == code_a].index
+                    idx_b = day_df[day_df['Session Code'] == code_b].index
+                    # You can pick categories from A OR categories from B, but not both
+                    prob += lpSum([is_selected[k] for k in idx_a]) + lpSum([is_selected[m] for m in idx_b]) <= 1
+
+    # --- 4. Solve ---
+    prob.solve()
+
+    # --- 5. Extract Results ---
+    # We filter rows where the quantity is greater than 0
+    selected_indices = [i for i in df.index if value(quantities[i]) >= 1]
+    
+    result_df = df.loc[selected_indices].copy()
+    # Add the selected quantity back to the dataframe for display
+    result_df['Selected_Qty'] = [int(value(quantities[i])) for i in selected_indices]
+    
+    return result_df
 
 
 df_new = flatten_prices(pd.DataFrame(df_sessions))
@@ -500,90 +585,5 @@ with tab2:
 #     return df.loc[selected_rows]
 
 
-def optimize_itinerary(df, max_tickets=24, total_budget=20000, must_attend_ids=[]):
-    # --- 1. Data Cleaning ---
-    def to_hours(t):
-        if isinstance(t, (int, float)): return float(t)
-        if isinstance(t, str) and ':' in t:
-            try:
-                parts = t.split(':')
-                h, m = int(parts[0]), int(parts[1])
-                return 24 if h == 0 else h + m / 60.0
-            except ValueError: return 0.0
-        return 0.0
 
-    df['start_h'] = df['Start Time'].apply(to_hours)
-    df['end_h'] = df['End Time'].apply(to_hours)
-
-    # --- 2. Initialize Model ---
-    prob = LpProblem("Olympic_MultiTicket_Optimization", LpMaximize)
-
-    # Main Variable: How many tickets to buy for this specific row (0 to 4)
-    # Use 'Integer' instead of 'Binary'
-    quantities = LpVariable.dicts("Qty", df.index, lowBound=0, upBound=4, cat=LpInteger)
-    
-    # Helper Variable: Is this specific session/category selected at all? (0 or 1)
-    is_selected = LpVariable.dicts("IsSelected", df.index, cat=LpBinary)
-
-    # OBJECTIVE: Maximize the total number of tickets purchased
-    prob += lpSum([quantities[i] for i in df.index])
-
-    # --- 3. Constraints ---
-
-    # Linking Constraint: If quantities[i] > 0, then is_selected[i] must be 1
-    # 1. Linking Quantities and Selection
-    for i in df.index:
-        prob += quantities[i] <= 4 * is_selected[i]
-        prob += quantities[i] >= 1 * is_selected[i]
-
-    # 2. MANDATORY REQUIREMENTS (Dynamic Quantities)
-    for i in df.index:
-        event_id = df.loc[i, 'id']
-        if event_id in mandatory_requirements:
-            required_qty = mandatory_requirements[event_id]
-            # Force the exact quantity requested in the sidebar
-            prob += quantities[i] == required_qty
-            prob += is_selected[i] == 1
-    
-    # 3. Budget (Price * Qty)
-    prob += lpSum([quantities[i] * df.loc[i, 'Price_Num'] for i in df.index]) <= total_budget
-
-    # 4. Total Ticket Limit
-    prob += lpSum([quantities[i] for i in df.index]) <= max_tickets
-
-    # 5. One Category per Session
-    for code in df['Session Code'].unique():
-        s_idx = df[df['Session Code'] == code].index
-        prob += lpSum([is_selected[i] for i in s_idx]) <= 1
-        
-    # Constraint D: No Overlapping Times
-    # If sessions overlap, you can't be in two places at once. 
-    # Therefore, the sum of "is_selected" for overlapping sessions must be <= 1
-    for day in df['Date'].unique():
-        day_df = df[df['Date'] == day]
-        unique_sessions = day_df['Session Code'].unique()
-        
-        for i, code_a in enumerate(unique_sessions):
-            for code_b in unique_sessions[i+1:]:
-                row_a = day_df[day_df['Session Code'] == code_a].iloc[0]
-                row_b = day_df[day_df['Session Code'] == code_b].iloc[0]
-                
-                if row_a['start_h'] < row_b['end_h'] and row_b['start_h'] < row_a['end_h']:
-                    idx_a = day_df[day_df['Session Code'] == code_a].index
-                    idx_b = day_df[day_df['Session Code'] == code_b].index
-                    # You can pick categories from A OR categories from B, but not both
-                    prob += lpSum([is_selected[k] for k in idx_a]) + lpSum([is_selected[m] for m in idx_b]) <= 1
-
-    # --- 4. Solve ---
-    prob.solve()
-
-    # --- 5. Extract Results ---
-    # We filter rows where the quantity is greater than 0
-    selected_indices = [i for i in df.index if value(quantities[i]) >= 1]
-    
-    result_df = df.loc[selected_indices].copy()
-    # Add the selected quantity back to the dataframe for display
-    result_df['Selected_Qty'] = [int(value(quantities[i])) for i in selected_indices]
-    
-    return result_df
 
