@@ -95,7 +95,7 @@ def flatten_prices(df):
     # Convert to float; invalid values become NaN, then fill NaN with 0
     df_filtered['Price_Num'] = pd.to_numeric(df_filtered['Price_Num'], errors='coerce').fillna(0.0)
     df_filtered['Games Day'] = pd.to_numeric(df_filtered['Games Day'], errors='coerce').fillna(0).astype(int)
-    df_filtered = df_filtered[df_filtered['Games Day'] >= 5 & df_filtered['Games Day'] <=11]
+    df_filtered = df_filtered[df_filtered['Games Day'] >= 5 and df_filtered['Games Day'] <=11]
 
     df_filtered['Date_Str'] = df_filtered['Date'].astype(str)
     df_filtered['Time_Str'] = df_filtered['Start Time'].astype(str)
