@@ -32,7 +32,7 @@ sessions_data = response_sessions.data # bringing in the sessions data for olymp
 
 df_sessions = pd.DataFrame(sessions_data)
 
-
+mandatory_requirements = {}
 st.write("Full Event Table")
 st.dataframe(df_sessions)
 
@@ -233,7 +233,7 @@ with tab1:
     )
     
     # 2. Decide the quantity for each selected event
-    mandatory_requirements = {}
+    # mandatory_requirements = {}
     for label in selected_labels:
         # Find the ID for this label
         event_id = df_new_zone[df_new_zone['label'] == label]['id'].iloc[0]
