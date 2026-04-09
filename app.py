@@ -258,7 +258,7 @@ with tab1:
         # 1. Filter the dataframe to get the rows for mandatory IDs
         # We use .copy() to avoid SettingWithCopy warnings
         m_ids = list(mandatory_requirements.keys())
-        mandatory_display_df = clean_df[clean_df['id'].isin(m_ids)].copy()
+        mandatory_display_df = df_new_zone[df_new_zone['id'].isin(m_ids)].copy()
         
         # 2. Map the quantities from your dictionary to the dataframe
         mandatory_display_df['Qty'] = mandatory_display_df['id'].map(mandatory_requirements)
@@ -297,7 +297,7 @@ with tab2:
         # 1. Filter the dataframe to get the rows for mandatory IDs
         # We use .copy() to avoid SettingWithCopy warnings
         m_ids = list(mandatory_requirements.keys())
-        mandatory_display_df = clean_df[clean_df['id'].isin(m_ids)].copy()
+        mandatory_display_df = df_new_zone[df_new_zone['id'].isin(m_ids)].copy()
         
         # 2. Map the quantities from your dictionary to the dataframe
         mandatory_display_df['Qty'] = mandatory_display_df['id'].map(mandatory_requirements)
