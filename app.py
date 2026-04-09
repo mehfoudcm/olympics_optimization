@@ -32,45 +32,10 @@ sessions_data = response_sessions.data # bringing in the sessions data for olymp
 
 df_sessions = pd.DataFrame(sessions_data)
 
-mandatory_requirements = {}
+
 st.write("Full Event Table")
 st.dataframe(df_sessions)
 
-if mandatory_requirements:
-    st.markdown("### ⭐ Your Mandatory Selection")
-    
-    # 1. Filter the dataframe to get the rows for mandatory IDs
-    # We use .copy() to avoid SettingWithCopy warnings
-    m_ids = list(mandatory_requirements.keys())
-    mandatory_display_df = clean_df[clean_df['id'].isin(m_ids)].copy()
-    
-    # 2. Map the quantities from your dictionary to the dataframe
-    mandatory_display_df['Qty'] = mandatory_display_df['id'].map(mandatory_requirements)
-    
-    # 3. Calculate subtotal for each row
-    mandatory_display_df['Subtotal'] = (
-        mandatory_display_df['Qty'] * mandatory_display_df['Price_Num']
-    )
-    
-    # 4. Display the table
-    # We sort by the datetime column we created earlier for chronological order
-    st.dataframe(
-        mandatory_display_df.sort_values('session_start_dt')[
-            ['Qty', 'Sport', 'Session Description', 'Venue', 'Price', 'Subtotal']
-        ],
-        use_container_width=True,
-        hide_index=True
-    )
-    
-    # 5. Show the summary metrics
-    m_total_cost = mandatory_display_df['Subtotal'].sum()
-    m_total_tix = mandatory_display_df['Qty'].sum()
-    
-    c1, c2 = st.columns(2)
-    c1.metric("Mandatory Tickets", f"{m_total_tix}")
-    c2.metric("Mandatory Cost", f"€{m_total_cost:,.2f}")
-else:
-    st.info("No mandatory events selected yet. Use the sidebar to lock in your 'must-attend' sessions.")
 
 # Assuming 'df' is the dataframe you fetched from Supabase
 def flatten_prices(df):
@@ -233,7 +198,7 @@ with tab1:
     )
     
     # 2. Decide the quantity for each selected event
-    # mandatory_requirements = {}
+    mandatory_requirements = {}
     for label in selected_labels:
         # Find the ID for this label
         event_id = df_new_zone[df_new_zone['label'] == label]['id'].iloc[0]
@@ -287,8 +252,82 @@ with tab1:
     col1.markdown(f"Tickets: :{ticket_color}[{mandatory_qty_total} / {tickets}]")
     col2.markdown(f"Cost: :{budget_color}[${mandatory_cost_total:,.0f}]")
 
+    if mandatory_requirements:
+        st.markdown("### ⭐ Your Mandatory Selection")
+        
+        # 1. Filter the dataframe to get the rows for mandatory IDs
+        # We use .copy() to avoid SettingWithCopy warnings
+        m_ids = list(mandatory_requirements.keys())
+        mandatory_display_df = clean_df[clean_df['id'].isin(m_ids)].copy()
+        
+        # 2. Map the quantities from your dictionary to the dataframe
+        mandatory_display_df['Qty'] = mandatory_display_df['id'].map(mandatory_requirements)
+        
+        # 3. Calculate subtotal for each row
+        mandatory_display_df['Subtotal'] = (
+            mandatory_display_df['Qty'] * mandatory_display_df['Price_Num']
+        )
+        
+        # 4. Display the table
+        # We sort by the datetime column we created earlier for chronological order
+        st.dataframe(
+            mandatory_display_df.sort_values('session_start_dt')[
+                ['Qty', 'Sport', 'Session Description', 'Venue', 'Price', 'Subtotal']
+            ],
+            use_container_width=True,
+            hide_index=True
+        )
+        
+        # 5. Show the summary metrics
+        m_total_cost = mandatory_display_df['Subtotal'].sum()
+        m_total_tix = mandatory_display_df['Qty'].sum()
+        
+        c1, c2 = st.columns(2)
+        c1.metric("Mandatory Tickets", f"{m_total_tix}")
+        c2.metric("Mandatory Cost", f"${m_total_cost:,.2f}")
+    else:
+        st.info("No mandatory events selected yet. Use the sidebar to lock in your 'must-attend' sessions.")
+
 
 with tab2:
+
+        if mandatory_requirements:
+        st.markdown("### ⭐ Your Mandatory Selection")
+        
+        # 1. Filter the dataframe to get the rows for mandatory IDs
+        # We use .copy() to avoid SettingWithCopy warnings
+        m_ids = list(mandatory_requirements.keys())
+        mandatory_display_df = clean_df[clean_df['id'].isin(m_ids)].copy()
+        
+        # 2. Map the quantities from your dictionary to the dataframe
+        mandatory_display_df['Qty'] = mandatory_display_df['id'].map(mandatory_requirements)
+        
+        # 3. Calculate subtotal for each row
+        mandatory_display_df['Subtotal'] = (
+            mandatory_display_df['Qty'] * mandatory_display_df['Price_Num']
+        )
+        
+        # 4. Display the table
+        # We sort by the datetime column we created earlier for chronological order
+        st.dataframe(
+            mandatory_display_df.sort_values('session_start_dt')[
+                ['Qty', 'Sport', 'Session Description', 'Venue', 'Price', 'Subtotal']
+            ],
+            use_container_width=True,
+            hide_index=True
+        )
+        
+        # 5. Show the summary metrics
+        m_total_cost = mandatory_display_df['Subtotal'].sum()
+        m_total_tix = mandatory_display_df['Qty'].sum()
+        
+        c1, c2 = st.columns(2)
+        c1.metric("Mandatory Tickets", f"{m_total_tix}")
+        c2.metric("Mandatory Cost", f"${m_total_cost:,.2f}")
+    else:
+        st.info("No mandatory events selected yet. Use the sidebar to lock in your 'must-attend' sessions.")
+
+    
     st.write("Time Constrained Event Table")
 
     clean_filtered_df = filter_conflicting_events(df_new_zone, mandatory_requirements)
