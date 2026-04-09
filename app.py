@@ -272,7 +272,7 @@ with tab1:
         # We sort by the datetime column we created earlier for chronological order
         st.dataframe(
             mandatory_display_df.sort_values('Session Start Date Time')[
-                ['Qty', 'Sport', 'Session Description', 'Venue', 'Price', 'Subtotal']
+                ['Session Start Date Time', 'End Time', 'Qty', 'Sport', 'Session Description', 'Venue', 'Price', 'Subtotal']
             ],
             use_container_width=True,
             hide_index=True
@@ -311,7 +311,7 @@ with tab2:
         # We sort by the datetime column we created earlier for chronological order
         st.dataframe(
             mandatory_display_df.sort_values('Session Start Date Time')[
-                ['Qty', 'Sport', 'Session Description', 'Venue', 'Price', 'Subtotal']
+                ['Session Start Date Time', 'End Time', 'Qty', 'Sport', 'Session Description', 'Venue', 'Price', 'Subtotal']
             ],
             use_container_width=True,
             hide_index=True
