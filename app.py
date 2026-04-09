@@ -111,6 +111,48 @@ def flatten_prices(df):
     
     return df_filtered
 
+def filter_conflicting_events(df, mandatory_requirements):
+    if not mandatory_requirements:
+        return df
+
+    # 1. Get the full data for the mandatory events
+    mandatory_ids = list(mandatory_requirements.keys())
+    mandatory_df = df[df['id'].isin(mandatory_ids)]
+    
+    # 2. Create a list of 'blocked' windows
+    # We store these as (Date, Start, End) tuples
+    blocked_windows = []
+    for _, row in mandatory_df.iterrows():
+        blocked_windows.append({
+            'date': row['Date'],
+            'start': row['Start Time'],
+            'end': row['End Time'],
+            'id': row['id']
+        })
+
+    # 3. Define the filtering function
+    def is_conflicting(row):
+        # If this row IS one of the mandatory events, keep it!
+        if row['id'] in mandatory_ids:
+            return False
+            
+        for window in blocked_windows:
+            # Check if it's the same day
+            if row['Date'] == window['date']:
+                # Overlap logic: StartA < EndB AND StartB < EndA
+                if row['Start Time'] < window['End Time'] and window['Start Time'] < row['End Time']:
+                    return True # Conflict found
+        return False
+
+    # 4. Apply the filter
+    # We keep rows that are NOT conflicting
+    filtered_df = df[~df.apply(is_conflicting, axis=1)].copy()
+    
+    return filtered_df
+
+
+
+
 df_new = flatten_prices(pd.DataFrame(df_sessions))
 
 tab1, tab2 = st.tabs(["⚙️ Settings & Mandatory Events", "📊 Optimized Results"])
@@ -471,44 +513,4 @@ def optimize_itinerary(df, max_tickets=24, total_budget=20000, must_attend_ids=[
     result_df['Selected_Qty'] = [int(value(quantities[i])) for i in selected_indices]
     
     return result_df
-
-
-def filter_conflicting_events(df, mandatory_requirements):
-    if not mandatory_requirements:
-        return df
-
-    # 1. Get the full data for the mandatory events
-    mandatory_ids = list(mandatory_requirements.keys())
-    mandatory_df = df[df['id'].isin(mandatory_ids)]
-    
-    # 2. Create a list of 'blocked' windows
-    # We store these as (Date, Start, End) tuples
-    blocked_windows = []
-    for _, row in mandatory_df.iterrows():
-        blocked_windows.append({
-            'date': row['Date'],
-            'start': row['Start Time'],
-            'end': row['End Time'],
-            'id': row['id']
-        })
-
-    # 3. Define the filtering function
-    def is_conflicting(row):
-        # If this row IS one of the mandatory events, keep it!
-        if row['id'] in mandatory_ids:
-            return False
-            
-        for window in blocked_windows:
-            # Check if it's the same day
-            if row['Date'] == window['date']:
-                # Overlap logic: StartA < EndB AND StartB < EndA
-                if row['Start Time'] < window['End Time'] and window['Start Time'] < row['End Time']:
-                    return True # Conflict found
-        return False
-
-    # 4. Apply the filter
-    # We keep rows that are NOT conflicting
-    filtered_df = df[~df.apply(is_conflicting, axis=1)].copy()
-    
-    return filtered_df
 
