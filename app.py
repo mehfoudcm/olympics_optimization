@@ -231,7 +231,7 @@ with tab1:
     
     # Simple overlap check: compare each mandatory event against others
     m_sessions = mandatory_df.to_dict('records')
-    print(m_sessions)
+
     for i, event_a in enumerate(m_sessions):
         for event_b in m_sessions[i+1:]:
             # If same day and times overlap
