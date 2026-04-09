@@ -140,7 +140,7 @@ def filter_conflicting_events(df, mandatory_requirements):
             # Check if it's the same day
             if row['Date'] == window['date']:
                 # Overlap logic: StartA < EndB AND StartB < EndA
-                if row['Start Time'] < window['End Time'] and window['Start Time'] < row['End Time']:
+                if row['start'] < window['end'] and window['start'] < row['end']:
                     return True # Conflict found
         return False
 
